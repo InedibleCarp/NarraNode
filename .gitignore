@@ -1,2 +1,5 @@
 my_visual_novel.json
 story_data.json
+
+.venv
+__pycache__
