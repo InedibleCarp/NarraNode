@@ -1,8 +1,8 @@
 import tkinter as tk
 from tkinter import messagebox, simpledialog, Toplevel
 import json
-import narranode as engine
-import visualizer
+import src.narranode as engine
+import src.visualizer as visualizer
 
 class NodeEditorApp:
     def __init__(self, root):
