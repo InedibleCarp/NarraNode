@@ -58,6 +58,7 @@ class NodeEditorApp:
         self.btn_frame.pack(fill="x", pady=10)
         
         tk.Button(self.btn_frame, text="Save Node", command=self.save_node, bg="#dddddd").pack(side="left", padx=5)
+        tk.Button(self.btn_frame, text="Clear", command=self.clear_fields, bg="#f0f0f0").pack(side="left", padx=5)
         tk.Button(self.btn_frame, text="Manage Choices", command=self.open_choice_window, bg="#add8e6").pack(side="left", padx=5)
 
         # --- NEW BUTTON ---
@@ -121,6 +122,16 @@ class NodeEditorApp:
         self.entry_next_node.delete(0, tk.END)
         if node.next_node_id:
             self.entry_next_node.insert(0, node.next_node_id)
+
+    def clear_fields(self):
+        """Clears all input fields to start creating a new node."""
+        self.entry_id.delete(0, tk.END)
+        self.entry_speaker.delete(0, tk.END)
+        self.text_content.delete("1.0", tk.END)
+        self.entry_next_node.delete(0, tk.END)
+        self.current_node_id = None
+        # Deselect any selected item in the listbox
+        self.node_listbox.selection_clear(0, tk.END)
 
     def export_json(self):
         self.tree.save_to_json()
