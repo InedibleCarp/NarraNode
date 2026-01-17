@@ -1,4 +1,5 @@
 import json
+import os
 
 class DialogueNode:
     """
@@ -12,9 +13,7 @@ class DialogueNode:
 
     def add_choice(self, choice_text, next_node_id, effects=None, requirements=None):
         """
-        Adds a branching path.
-        :param effects: Dict of changes to state (e.g., {'gold': -5})
-        :param requirements: Dict of needs to see this option (e.g., {'gold': 5})
+        Adds a branching path with optional logic.
         """
         self.choices.append({
             "text": choice_text,
@@ -38,7 +37,7 @@ class DialogueTree:
     """
     def __init__(self):
         self.nodes = {}
-        # Default starting stats
+        # Global State (Variables like Health, Gold, Flags)
         self.state = {
             "gold": 0,
             "honor": 0,
@@ -57,7 +56,6 @@ class DialogueTree:
         Example: reqs={'gold': 5} -> Checks if state['gold'] >= 5
         """
         for stat, value in requirements.items():
-            # If stat doesn't exist, assume 0
             current_val = self.state.get(stat, 0)
             if current_val < value:
                 return False
@@ -78,6 +76,38 @@ class DialogueTree:
             json.dump(data, f, indent=4)
         print(f"\n[System] Saved {len(self.nodes)} nodes to {filename}")
 
+    def load_from_json(self, filename="story_data.json"):
+        """Loads nodes from a JSON file into memory."""
+        if not os.path.exists(filename):
+            print(f"[System] File '{filename}' not found.")
+            return False
+
+        with open(filename, "r") as f:
+            data = json.load(f)
+
+        self.nodes = {}
+        for node_id, node_data in data.items():
+            # Reconstruct the Node object
+            new_node = DialogueNode(
+                node_data["ID"], 
+                node_data["Speaker"], 
+                node_data["Text"]
+            )
+            
+            # Reconstruct Choices
+            for choice in node_data["Choices"]:
+                new_node.add_choice(
+                    choice["text"],
+                    choice["next_id"],
+                    effects=choice.get("effects"),
+                    requirements=choice.get("requirements")
+                )
+            
+            self.add_node(new_node)
+        
+        print(f"[System] Loaded {len(self.nodes)} nodes from {filename}")
+        return True
+
 def play_story(tree, start_node_id):
     """
     The Game Loop: Renders nodes and handles input.
@@ -87,7 +117,7 @@ def play_story(tree, start_node_id):
     while True:
         node = tree.get_node(current_id)
         if not node:
-            print(f"Error: Node {current_id} not found.")
+            print(f"Error: Node '{current_id}' not found.")
             break
 
         # --- DISPLAY UI ---
@@ -106,17 +136,15 @@ def play_story(tree, start_node_id):
         available_choices = []
         
         for choice in node.choices:
-            # Check if we meet requirements
-            is_unlocked = tree.check_requirements(choice['requirements'])
+            is_unlocked = tree.check_requirements(choice.get('requirements', {}))
             
             if is_unlocked:
-                # Add to list of valid options
                 available_choices.append(choice)
                 idx = len(available_choices)
                 print(f" {idx}. {choice['text']}")
             else:
-                # Optional: Show locked choices (greyed out)
-                reqs = choice['requirements']
+                # Show locked choices
+                reqs = choice.get('requirements', {})
                 print(f" [LOCKED] {choice['text']} (Requires: {reqs})")
 
         if not available_choices:
@@ -129,9 +157,7 @@ def play_story(tree, start_node_id):
                 sel = int(input("\nSelection #: "))
                 if 1 <= sel <= len(available_choices):
                     selected = available_choices[sel - 1]
-                    
-                    # Apply effects and Move
-                    tree.apply_effects(selected['effects'])
+                    tree.apply_effects(selected.get('effects', {}))
                     current_id = selected['next_id']
                     break
                 else:
@@ -143,57 +169,17 @@ def play_story(tree, start_node_id):
 if __name__ == "__main__":
     game = DialogueTree()
     
-    # Setup specific stats for testing
-    game.state['gold'] = 2 # Player starts poor
-
-    # Node 1: The Merchant
-    n1 = DialogueNode("shop_01", "Merchant", "That sword costs 10 Gold. Do you have the coin?")
+    print("--- NarraNode CLI Engine ---")
     
-    # Node 2: Success
-    n2 = DialogueNode("buy_success", "Hero", "Here is the money. (You equip the sword).")
-    
-    # Node 3: Failure
-    n3 = DialogueNode("buy_fail", "Merchant", "Come back when you're not a beggar!")
-
-    # Node 4: Grind for money
-    n4 = DialogueNode("work_01", "Narrator", "You scrub floors for a few hours.")
-
-
-    # --- LINKING ---
-    
-    # Option 1: Buy sword (REQUIRES 10 GOLD)
-    n1.add_choice(
-        choice_text="Buy the Sword", 
-        next_node_id="buy_success", 
-        effects={"gold": -10, "damage": 5},
-        requirements={"gold": 10}
-    )
-
-    # Option 2: Leave
-    n1.add_choice("Leave shop", "buy_fail")
-
-    # Option 3: Work (CORRECTED)
-    # This now points to 'work_01' (n4) instead of looping instantly
-    n1.add_choice(
-        choice_text="Work for coin (+5 Gold)", 
-        next_node_id="work_01", 
-        effects={"gold": 5}
-    )
-
-    # NEW: Add a "Return" link to the Work Node (n4)
-    # Otherwise, the game would get stuck on the "You scrub floors" screen!
-    n4.add_choice(
-        choice_text="Return to shop",
-        next_node_id="shop_01"
-    )
-
-    game.add_node(n1)
-    game.add_node(n2)
-    game.add_node(n3)
-    game.add_node(n4)
-
-    # Start the engine
-    play_story(game, "shop_01")
-    
-    # Save the result
-    game.save_to_json()
+    # Try to load existing data
+    if game.load_from_json("story_data.json"):
+        # Auto-detect the first node ID to start with
+        first_node_id = list(game.nodes.keys())[0]
+        
+        # Optional: Ask user for starting node
+        # first_node_id = input(f"Enter starting Node ID (Default: {first_node_id}): ") or first_node_id
+        
+        play_story(game, first_node_id)
+    else:
+        print("\nNo story file found!")
+        print("Run 'editor.py' first to create your story, then run this script to play it.")
