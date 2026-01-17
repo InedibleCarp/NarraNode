@@ -109,7 +109,6 @@ class NodeEditorApp:
         self.tree.save_to_json()
         messagebox.showinfo("Export", "Saved to story_data.json")
 
-    # --- THE NEW CHOICE EDITOR WINDOW ---
     def open_choice_window(self):
         if not self.current_node_id:
             messagebox.showwarning("Warning", "Please save or select a Node first.")
@@ -120,7 +119,7 @@ class NodeEditorApp:
         # Create Pop-up Window
         win = Toplevel(self.root)
         win.title(f"Choices for {node.node_id}")
-        win.geometry("500x400")
+        win.geometry("500x550") # Made slightly taller to fit new field
 
         # List existing choices
         lbl = tk.Label(win, text="Existing Choices:")
@@ -130,9 +129,11 @@ class NodeEditorApp:
         choice_list.pack(fill="x", padx=10)
 
         for c in node.choices:
-            choice_list.insert(tk.END, f"-> {c['next_id']} : {c['text']}")
+            # Display target + text. If it has requirements, show a little lock icon/text.
+            req_text = " [LOCKED]" if c.get('requirements') else ""
+            choice_list.insert(tk.END, f"-> {c['next_id']} : {c['text']}{req_text}")
 
-        # Form to add new choice
+        # --- ADD NEW CHOICE FORM ---
         tk.Label(win, text="--- Add New Choice ---").pack(pady=10)
         
         tk.Label(win, text="Button Text:").pack()
@@ -143,38 +144,58 @@ class NodeEditorApp:
         c_next = tk.Entry(win)
         c_next.pack()
 
-        # Advanced: Raw JSON input for Effects/Reqs
+        # Effects Field
         tk.Label(win, text="Effects (JSON) e.g. {'gold': -5}").pack()
         c_effects = tk.Entry(win)
         c_effects.pack()
+
+        # NEW: Requirements Field
+        tk.Label(win, text="Requirements (JSON) e.g. {'gold': 10}").pack()
+        c_reqs = tk.Entry(win) # <--- The new input box
+        c_reqs.pack()
 
         def add_choice_action():
             txt = c_text.get()
             nxt = c_next.get()
             eff_str = c_effects.get()
+            req_str = c_reqs.get() # <--- Get the text
             
             if not txt or not nxt:
                 return
 
-            # Parse JSON string for effects (safe eval)
-            real_effects = {}
-            if eff_str:
+            # Helper to safely parse JSON
+            def parse_json(s):
+                if not s: return {}
                 try:
-                    real_effects = json.loads(eff_str.replace("'", '"')) # Allow single quotes
+                    return json.loads(s.replace("'", '"'))
                 except:
-                    messagebox.showerror("Error", "Invalid JSON format for Effects")
-                    return
+                    messagebox.showerror("Error", f"Invalid JSON: {s}")
+                    return None
 
-            # Add using the logic engine
-            node.add_choice(txt, nxt, effects=real_effects)
+            real_effects = parse_json(eff_str)
+            real_reqs = parse_json(req_str) # <--- Parse it
+
+            # If JSON failed, stop
+            if real_effects is None or real_reqs is None:
+                return
+
+            # Add to Backend
+            node.add_choice(
+                txt, 
+                nxt, 
+                effects=real_effects, 
+                requirements=real_reqs # <--- Pass it to logic
+            )
             
             # Refresh list
-            choice_list.insert(tk.END, f"-> {nxt} : {txt}")
+            req_display = " [LOCKED]" if real_reqs else ""
+            choice_list.insert(tk.END, f"-> {nxt} : {txt}{req_display}")
             
             # Clear inputs
             c_text.delete(0, tk.END)
             c_next.delete(0, tk.END)
             c_effects.delete(0, tk.END)
+            c_reqs.delete(0, tk.END)
 
         tk.Button(win, text="Add Choice", command=add_choice_action, bg="#90ee90").pack(pady=10)
 
