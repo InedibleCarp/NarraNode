@@ -23,3 +23,35 @@ NarraNode uses the standard Python library. No external dependencies are require
 Run the editor to build your story visually.
 ```bash
 python editor.py
+
+```
+
+* **Create Node:** Enter an ID, Speaker, and Text, then click Save.
+* **Manage Choices:** Select a node and click "Manage Choices" to add branches.
+* **Effects:** Enter JSON, e.g., `{'hp': -10}`.
+* **Requirements:** Enter JSON, e.g., `{'intellect': 5}`.
+
+
+* **Export:** Click "Export JSON" to save your work to `story_data.json`.
+
+### 2. The Playtest Engine (CLI)
+
+Test your story logic directly in the terminal.
+
+```bash
+python narranode.py
+
+```
+
+## Project Structure
+
+* `narranode.py` - The backend logic (Models) and text-based game engine.
+* `editor.py` - The frontend application (View).
+* `story_data.json` - The database file (generated upon use).
+
+## Integration Guide
+
+To use in Unreal Engine 5:
+
+1. Create a **Struct** matching the JSON fields (ID, Speaker, Text, Choices).
+2. Import `story_data.json` as a **DataTable** using that Struct.
