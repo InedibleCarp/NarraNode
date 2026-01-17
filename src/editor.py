@@ -1,8 +1,8 @@
 import tkinter as tk
 from tkinter import messagebox, simpledialog, Toplevel
 import json
-import src.narranode as engine
-import src.visualizer as visualizer
+import narranode as engine
+import visualizer as visualizer
 
 class NodeEditorApp:
     def __init__(self, root):
@@ -48,6 +48,11 @@ class NodeEditorApp:
         self.text_content = tk.Text(self.right_frame, height=5)
         self.text_content.pack(fill="x", pady=(0, 10))
 
+        # Linear Flow Field (Next Node)
+        tk.Label(self.right_frame, text="Next Node (Linear Flow - leave empty for choices):").pack(anchor="w")
+        self.entry_next_node = tk.Entry(self.right_frame)
+        self.entry_next_node.pack(fill="x", pady=(0, 10))
+
         # Buttons Row
         self.btn_frame = tk.Frame(self.right_frame)
         self.btn_frame.pack(fill="x", pady=10)
@@ -65,6 +70,7 @@ class NodeEditorApp:
         node_id = self.entry_id.get().strip()
         speaker = self.entry_speaker.get().strip()
         text = self.text_content.get("1.0", tk.END).strip()
+        next_node = self.entry_next_node.get().strip() or None  # Linear flow target
 
         if not node_id:
             messagebox.showerror("Error", "Node ID is required!")
@@ -72,17 +78,18 @@ class NodeEditorApp:
 
         # Check if node exists to preserve choices
         existing_node = self.tree.get_node(node_id)
-        
+
         if existing_node:
             # Update existing
             existing_node.speaker = speaker
             existing_node.text = text
+            existing_node.next_node_id = next_node  # Update linear flow
             # We DO NOT overwrite choices here, so they stay safe
         else:
             # Create new
-            new_node = engine.DialogueNode(node_id, speaker, text)
+            new_node = engine.DialogueNode(node_id, speaker, text, next_node_id=next_node)
             self.tree.add_node(new_node)
-        
+
         self.current_node_id = node_id
         self.refresh_list()
         messagebox.showinfo("Saved", f"Node '{node_id}' updated.")
@@ -95,20 +102,25 @@ class NodeEditorApp:
     def load_selected_node(self, event):
         selection = self.node_listbox.curselection()
         if not selection: return
-        
+
         node_id = self.node_listbox.get(selection[0])
         self.current_node_id = node_id
         node = self.tree.get_node(node_id)
-        
+
         # Clear & Fill
         self.entry_id.delete(0, tk.END)
         self.entry_id.insert(0, node.node_id)
-        
+
         self.entry_speaker.delete(0, tk.END)
         self.entry_speaker.insert(0, node.speaker)
-        
+
         self.text_content.delete("1.0", tk.END)
         self.text_content.insert("1.0", node.text)
+
+        # Load linear flow field
+        self.entry_next_node.delete(0, tk.END)
+        if node.next_node_id:
+            self.entry_next_node.insert(0, node.next_node_id)
 
     def export_json(self):
         self.tree.save_to_json()

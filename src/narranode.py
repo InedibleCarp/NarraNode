@@ -5,10 +5,11 @@ class DialogueNode:
     """
     Represents a single screen of dialogue (a Node).
     """
-    def __init__(self, node_id, speaker, text):
+    def __init__(self, node_id, speaker, text, next_node_id=None):
         self.node_id = node_id
         self.speaker = speaker
         self.text = text
+        self.next_node_id = next_node_id  # For linear flow (no choices)
         self.choices = []
 
     def add_choice(self, choice_text, next_node_id, effects=None, requirements=None):
@@ -28,6 +29,7 @@ class DialogueNode:
             "ID": self.node_id,
             "Speaker": self.speaker,
             "Text": self.text,
+            "NextNode": self.next_node_id,  # Linear flow target
             "Choices": self.choices
         }
 
@@ -89,11 +91,12 @@ class DialogueTree:
         for node_id, node_data in data.items():
             # Reconstruct the Node object
             new_node = DialogueNode(
-                node_data["ID"], 
-                node_data["Speaker"], 
-                node_data["Text"]
+                node_data["ID"],
+                node_data["Speaker"],
+                node_data["Text"],
+                next_node_id=node_data.get("NextNode")  # Load linear flow target
             )
-            
+
             # Reconstruct Choices
             for choice in node_data["Choices"]:
                 new_node.add_choice(
@@ -102,7 +105,7 @@ class DialogueTree:
                     effects=choice.get("effects"),
                     requirements=choice.get("requirements")
                 )
-            
+
             self.add_node(new_node)
         
         print(f"[System] Loaded {len(self.nodes)} nodes from {filename}")
@@ -127,9 +130,15 @@ def play_story(tree, start_node_id):
         print(f"[{node.speaker}]: \"{node.text}\"")
         print("-" * 50)
 
+        # --- LINEAR FLOW (No choices, auto-advance) ---
         if not node.choices:
-            print("(End of Story)")
-            break
+            if node.next_node_id:
+                input("\n[Press Enter to continue...]")
+                current_id = node.next_node_id
+                continue
+            else:
+                print("(End of Story)")
+                break
 
         # --- FILTER & SHOW CHOICES ---
         print("Decisions:")
