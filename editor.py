@@ -1,7 +1,8 @@
 import tkinter as tk
 from tkinter import messagebox, simpledialog, Toplevel
 import json
-import narranode as engine  # Your logic file
+import narranode as engine
+import visualizer
 
 class NodeEditorApp:
     def __init__(self, root):
@@ -53,6 +54,10 @@ class NodeEditorApp:
         
         tk.Button(self.btn_frame, text="Save Node", command=self.save_node, bg="#dddddd").pack(side="left", padx=5)
         tk.Button(self.btn_frame, text="Manage Choices", command=self.open_choice_window, bg="#add8e6").pack(side="left", padx=5)
+
+        # --- NEW BUTTON ---
+        tk.Button(self.btn_frame, text="Show Map", command=self.show_graph, bg="#ffcccb").pack(side="left", padx=5)
+
         tk.Button(self.btn_frame, text="Export JSON", command=self.export_json).pack(side="right")
 
     def save_node(self):
@@ -198,6 +203,20 @@ class NodeEditorApp:
             c_reqs.delete(0, tk.END)
 
         tk.Button(win, text="Add Choice", command=add_choice_action, bg="#90ee90").pack(pady=10)
+
+    def show_graph(self):
+        """Passes the current tree to the visualizer module."""
+        # Check if tree is empty
+        if not self.tree.nodes:
+            messagebox.showwarning("Empty", "No nodes to visualize!")
+            return
+            
+        try:
+            visualizer.visualize_story(self.tree)
+        except Exception as e:
+            messagebox.showerror("Error", f"Graph failed: {e}")
+
+
 
 if __name__ == "__main__":
     root = tk.Tk()
