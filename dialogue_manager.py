@@ -50,6 +50,7 @@ class DialogueTree:
             json.dump(data, f, indent=4)
         print(f"Successfully saved {len(self.nodes)} nodes to {filename}")
 
+
 # --- AI CO-WRITER STUB ---
 # Since you have AI training experience, this is where you'd hook in an API.
 def generate_ai_suggestion(prompt_context):
@@ -57,41 +58,77 @@ def generate_ai_suggestion(prompt_context):
     # return api_response
     pass
 
-# --- MAIN EXECUTION (Testing the logic) ---
+
+def play_story(tree, start_node_id):
+    """
+    A simple terminal-based 'Game Engine' to test the flow.
+    """
+    current_id = start_node_id
+    
+    while True:
+        # 1. Fetch the current node
+        node = tree.get_node(current_id)
+        
+        if not node:
+            print(f"Error: Node '{current_id}' not found!")
+            break
+
+        # 2. Render the 'Scene'
+        print("-" * 40)
+        print(f"[{node.speaker}]: \"{node.text}\"")
+        print("-" * 40)
+
+        # 3. Check for End of Game
+        if not node.choices:
+            print("(End of scene)")
+            break
+
+        # 4. Display Choices
+        print("What do you do?")
+        for index, choice in enumerate(node.choices):
+            print(f"{index + 1}. {choice['text']}")
+
+        # 5. Get User Input
+        while True:
+            try:
+                user_input = int(input("\nSelect a choice (number): "))
+                if 1 <= user_input <= len(node.choices):
+                    # Valid choice found! Update the state.
+                    choice_data = node.choices[user_input - 1]
+                    current_id = choice_data["next_id"]
+                    break # Exit input loop, continue game loop
+                else:
+                    print("Invalid number. Try again.")
+            except ValueError:
+                print("Please enter a number.")
+
+# --- MAIN EXECUTION ---
 if __name__ == "__main__":
-    # 1. Create the Manager
     story = DialogueTree()
 
-    # 2. Create Nodes (The "Scenes")
-    # Node 1: The Intro
-    node1 = DialogueNode(
-        node_id="start_001", 
-        speaker="Mystery Figure", 
-        text="You've finally arrived. I wasn't sure you'd make it."
-    )
+    # Create Nodes
+    node1 = DialogueNode("start_001", "Mystery Figure", "You've finally arrived. I wasn't sure you'd make it.")
+    node2 = DialogueNode("path_aggressive", "Hero", "I don't have time for riddles. Where is the key?")
+    node3 = DialogueNode("path_diplomatic", "Hero", "The traffic was terrible. Who are you?")
     
-    # Node 2: Aggressive path
-    node2 = DialogueNode(
-        node_id="path_aggressive", 
-        speaker="Hero", 
-        text="I don't have time for riddles. Where is the key?"
-    )
+    # Endings
+    node4 = DialogueNode("end_fight", "Mystery Figure", "So you choose violence. Pity.")
+    node5 = DialogueNode("end_talk", "Mystery Figure", "A polite guest. Rare these days.")
 
-    # Node 3: Diplomatic path
-    node3 = DialogueNode(
-        node_id="path_diplomatic", 
-        speaker="Hero", 
-        text="The traffic was terrible. Who are you?"
-    )
-
-    # 3. Link them via Choices
+    # Link Choices
     node1.add_choice("Demand answers", "path_aggressive")
     node1.add_choice("Apologize politely", "path_diplomatic")
+    
+    node2.add_choice("Draw Weapon", "end_fight")
+    node3.add_choice("Ask for tea", "end_talk")
 
-    # 4. Add to the Story Manager
+    # Add to Tree
     story.add_node(node1)
     story.add_node(node2)
     story.add_node(node3)
+    story.add_node(node4)
+    story.add_node(node5)
 
-    # 5. Export to JSON
-    story.save_to_json("my_visual_novel.json")
+    # RUN THE GAME
+    print("--- STARTING DEBUG SESSION ---\n")
+    play_story(story, "start_001")
