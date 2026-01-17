@@ -72,13 +72,13 @@ class DialogueTree:
             self.state[stat] += value
             print(f"   >>> [Effect] {stat} changed by {value} (Now: {self.state[stat]})")
 
-    def save_to_json(self, filename="story_data.json"):
+    def save_to_json(self, filename="scripts/story_data.json"):
         data = {id: node.to_dict() for id, node in self.nodes.items()}
         with open(filename, "w") as f:
             json.dump(data, f, indent=4)
         print(f"\n[System] Saved {len(self.nodes)} nodes to {filename}")
 
-    def load_from_json(self, filename="story_data.json"):
+    def load_from_json(self, filename="scripts/story_data.json"):
         """Loads nodes from a JSON file into memory."""
         if not os.path.exists(filename):
             print(f"[System] File '{filename}' not found.")
@@ -181,7 +181,7 @@ if __name__ == "__main__":
     print("--- NarraNode CLI Engine ---")
     
     # Try to load existing data
-    if game.load_from_json("story_data.json"):
+    if game.load_from_json("scripts/story_data.json"):
         # Auto-detect the first node ID to start with
         first_node_id = list(game.nodes.keys())[0]
         

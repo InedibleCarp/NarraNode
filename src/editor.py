@@ -124,7 +124,7 @@ class NodeEditorApp:
 
     def export_json(self):
         self.tree.save_to_json()
-        messagebox.showinfo("Export", "Saved to story_data.json")
+        messagebox.showinfo("Export", "Saved to scripts/story_data.json")
 
     def open_choice_window(self):
         if not self.current_node_id:

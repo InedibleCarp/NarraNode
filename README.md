@@ -32,7 +32,7 @@ python editor.py
 * **Requirements:** Enter JSON, e.g., `{'intellect': 5}`.
 
 
-* **Export:** Click "Export JSON" to save your work to `story_data.json`.
+* **Export:** Click "Export JSON" to save your work to `scripts/story_data.json`.
 
 ### 2. The Playtest Engine (CLI)
 
@@ -47,11 +47,11 @@ python narranode.py
 
 * `narranode.py` - The backend logic and text-based game engine.
 * `editor.py` - The frontend application.
-* `story_data.json` - The database file (generated upon use).
+* `scripts/story_data.json` - The database file (generated upon use).
 
 ## Integration Guide
 
 To use in Unreal Engine 5:
 
 1. Create a **Struct** matching the JSON fields (ID, Speaker, Text, Choices).
-2. Import `story_data.json` as a **DataTable** using that Struct.
+2. Import `scripts/story_data.json` as a **DataTable** using that Struct.
