@@ -45,8 +45,8 @@ python narranode.py
 
 ## Project Structure
 
-* `narranode.py` - The backend logic (Models) and text-based game engine.
-* `editor.py` - The frontend application (View).
+* `narranode.py` - The backend logic and text-based game engine.
+* `editor.py` - The frontend application.
 * `story_data.json` - The database file (generated upon use).
 
 ## Integration Guide
