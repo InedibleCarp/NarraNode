@@ -59,6 +59,7 @@ class NodeEditorApp:
         
         tk.Button(self.btn_frame, text="Save Node", command=self.save_node, bg="#dddddd").pack(side="left", padx=5)
         tk.Button(self.btn_frame, text="Clear", command=self.clear_fields, bg="#f0f0f0").pack(side="left", padx=5)
+        tk.Button(self.btn_frame, text="Delete", command=self.delete_node, bg="#ffb3ba").pack(side="left", padx=5)
         tk.Button(self.btn_frame, text="Manage Choices", command=self.open_choice_window, bg="#add8e6").pack(side="left", padx=5)
 
         # --- NEW BUTTON ---
@@ -132,6 +133,27 @@ class NodeEditorApp:
         self.current_node_id = None
         # Deselect any selected item in the listbox
         self.node_listbox.selection_clear(0, tk.END)
+
+    def delete_node(self):
+        """Deletes the currently selected node after confirmation."""
+        if not self.current_node_id:
+            messagebox.showwarning("Warning", "Please select a node to delete.")
+            return
+
+        # Confirm deletion
+        confirm = messagebox.askyesno("Confirm Delete",
+                                      f"Are you sure you want to delete node '{self.current_node_id}'?")
+        if not confirm:
+            return
+
+        # Remove from tree
+        if self.current_node_id in self.tree.nodes:
+            del self.tree.nodes[self.current_node_id]
+            messagebox.showinfo("Deleted", f"Node '{self.current_node_id}' deleted.")
+
+            # Clear fields and refresh
+            self.clear_fields()
+            self.refresh_list()
 
     def export_json(self):
         self.tree.save_to_json()
