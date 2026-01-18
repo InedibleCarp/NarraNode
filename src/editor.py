@@ -62,8 +62,9 @@ class NodeEditorApp:
         tk.Button(self.btn_frame, text="Delete", command=self.delete_node, bg="#ffb3ba").pack(side="left", padx=5)
         tk.Button(self.btn_frame, text="Manage Choices", command=self.open_choice_window, bg="#add8e6").pack(side="left", padx=5)
 
-        # --- NEW BUTTON ---
+        # --- NEW BUTTONS ---
         tk.Button(self.btn_frame, text="Show Map", command=self.show_graph, bg="#ffcccb").pack(side="left", padx=5)
+        tk.Button(self.btn_frame, text="Global Variables", command=self.open_variables_window, bg="#c5e1a5").pack(side="left", padx=5)
 
         tk.Button(self.btn_frame, text="Export JSON", command=self.export_json).pack(side="right")
 
@@ -255,12 +256,113 @@ class NodeEditorApp:
         if not self.tree.nodes:
             messagebox.showwarning("Empty", "No nodes to visualize!")
             return
-            
+
         try:
             visualizer.visualize_story(self.tree)
         except Exception as e:
             messagebox.showerror("Error", f"Graph failed: {e}")
 
+    def open_variables_window(self):
+        """Opens a window to manage global state variables and their initial values."""
+        # Create Pop-up Window
+        win = Toplevel(self.root)
+        win.title("Global Variables Manager")
+        win.geometry("500x450")
+
+        # List existing variables
+        lbl = tk.Label(win, text="Current Global Variables:")
+        lbl.pack(anchor="w", padx=10, pady=5)
+
+        var_list = tk.Listbox(win, height=8)
+        var_list.pack(fill="x", padx=10)
+
+        def refresh_var_list():
+            """Refresh the listbox with current variables."""
+            var_list.delete(0, tk.END)
+            for var_name, var_value in self.tree.initial_state.items():
+                var_list.insert(tk.END, f"{var_name}: {var_value}")
+
+        refresh_var_list()
+
+        # --- ADD/EDIT VARIABLE FORM ---
+        tk.Label(win, text="--- Add/Edit Variable ---").pack(pady=10)
+
+        tk.Label(win, text="Variable Name:").pack()
+        v_name = tk.Entry(win)
+        v_name.pack()
+
+        tk.Label(win, text="Initial Value (number):").pack()
+        v_value = tk.Entry(win)
+        v_value.pack()
+
+        def add_variable_action():
+            """Add or update a variable in the initial state."""
+            name = v_name.get().strip()
+            value_str = v_value.get().strip()
+
+            if not name:
+                messagebox.showwarning("Warning", "Variable name is required!")
+                return
+
+            if not value_str:
+                messagebox.showwarning("Warning", "Initial value is required!")
+                return
+
+            try:
+                # Try to convert to int first, then float if that fails
+                try:
+                    value = int(value_str)
+                except ValueError:
+                    value = float(value_str)
+            except ValueError:
+                messagebox.showerror("Error", "Value must be a number!")
+                return
+
+            # Add to initial state
+            self.tree.initial_state[name] = value
+            # Also update current state if it doesn't exist
+            if name not in self.tree.state:
+                self.tree.state[name] = value
+
+            refresh_var_list()
+
+            # Clear inputs
+            v_name.delete(0, tk.END)
+            v_value.delete(0, tk.END)
+
+            messagebox.showinfo("Success", f"Variable '{name}' set to {value}")
+
+        def delete_variable_action():
+            """Delete the selected variable."""
+            selection = var_list.curselection()
+            if not selection:
+                messagebox.showwarning("Warning", "Please select a variable to delete!")
+                return
+
+            selected_text = var_list.get(selection[0])
+            var_name = selected_text.split(":")[0].strip()
+
+            confirm = messagebox.askyesno("Confirm Delete",
+                                          f"Are you sure you want to delete variable '{var_name}'?")
+            if not confirm:
+                return
+
+            # Remove from initial state
+            if var_name in self.tree.initial_state:
+                del self.tree.initial_state[var_name]
+            # Also remove from current state
+            if var_name in self.tree.state:
+                del self.tree.state[var_name]
+
+            refresh_var_list()
+            messagebox.showinfo("Deleted", f"Variable '{var_name}' deleted.")
+
+        # Buttons
+        btn_frame = tk.Frame(win)
+        btn_frame.pack(pady=10)
+
+        tk.Button(btn_frame, text="Add/Update Variable", command=add_variable_action, bg="#90ee90").pack(side="left", padx=5)
+        tk.Button(btn_frame, text="Delete Selected", command=delete_variable_action, bg="#ffb3ba").pack(side="left", padx=5)
 
 
 if __name__ == "__main__":
