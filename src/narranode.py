@@ -37,14 +37,12 @@ class DialogueTree:
     """
     The Engine: Manages nodes and the Global State (Variables).
     """
-    def __init__(self):
+    def __init__(self, initial_state=None):
         self.nodes = {}
+        # Store the initial state configuration for saving/loading
+        self.initial_state = initial_state if initial_state is not None else {}
         # Global State (Variables like Health, Gold, Flags)
-        self.state = {
-            "gold": 0,
-            "honor": 0,
-            "hp": 100
-        }
+        self.state = self.initial_state.copy()
 
     def add_node(self, node):
         self.nodes[node.node_id] = node
@@ -73,7 +71,10 @@ class DialogueTree:
             print(f"   >>> [Effect] {stat} changed by {value} (Now: {self.state[stat]})")
 
     def save_to_json(self, filename="scripts/story_data.json"):
-        data = {id: node.to_dict() for id, node in self.nodes.items()}
+        data = {
+            "initial_state": self.initial_state,
+            "nodes": {id: node.to_dict() for id, node in self.nodes.items()}
+        }
         with open(filename, "w") as f:
             json.dump(data, f, indent=4)
         print(f"\n[System] Saved {len(self.nodes)} nodes to {filename}")
@@ -87,8 +88,20 @@ class DialogueTree:
         with open(filename, "r") as f:
             data = json.load(f)
 
+        # Check if new format (with initial_state) or old format
+        if "nodes" in data and "initial_state" in data:
+            # New format
+            self.initial_state = data["initial_state"]
+            self.state = self.initial_state.copy()
+            nodes_data = data["nodes"]
+        else:
+            # Old format (backward compatibility)
+            nodes_data = data
+            self.initial_state = {}
+            self.state = {}
+
         self.nodes = {}
-        for node_id, node_data in data.items():
+        for node_id, node_data in nodes_data.items():
             # Reconstruct the Node object
             new_node = DialogueNode(
                 node_data["ID"],
@@ -107,7 +120,7 @@ class DialogueTree:
                 )
 
             self.add_node(new_node)
-        
+
         print(f"[System] Loaded {len(self.nodes)} nodes from {filename}")
         return True
 
