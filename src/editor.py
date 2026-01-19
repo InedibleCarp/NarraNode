@@ -8,7 +8,7 @@ class NodeEditorApp:
     def __init__(self, root):
         self.root = root
         self.root.title("NarraNode Editor")
-        self.root.geometry("700x500")
+        self.root.geometry("800x500")
 
         self.tree = engine.DialogueTree()
         self.current_node_id = None # Track what we are editing
