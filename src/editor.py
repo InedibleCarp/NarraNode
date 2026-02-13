@@ -12,6 +12,13 @@ class NodeEditorApp:
 
         self.tree = engine.DialogueTree()
         self.current_node_id = None # Track what we are editing
+        self._status_timer = None  # Track auto-clear timer
+
+        # --- STATUS BAR (pack first so it anchors to bottom) ---
+        self.status_bar = tk.Label(root, text="Ready", anchor="w",
+                                   bg="#f0f0f0", fg="#555555",
+                                   relief="sunken", padx=10, pady=4)
+        self.status_bar.pack(side="bottom", fill="x")
 
         # --- LEFT PANEL (List) ---
         self.left_frame = tk.Frame(root, width=250, bg="#e0e0e0")
@@ -68,6 +75,34 @@ class NodeEditorApp:
 
         tk.Button(self.btn_frame, text="Export JSON", command=self.export_json).pack(side="right")
 
+    def show_status(self, message, level="info"):
+        """Display a message in the status bar that auto-clears after a few seconds.
+
+        Levels: 'success' (green), 'warning' (orange), 'error' (red), 'info' (gray).
+        """
+        colors = {
+            "success": "#2e7d32",
+            "warning": "#e65100",
+            "error":   "#c62828",
+            "info":    "#555555",
+        }
+        durations = {
+            "success": 3000,
+            "warning": 4000,
+            "error":   5000,
+            "info":    3000,
+        }
+        self.status_bar.config(text=message, fg=colors.get(level, "#555555"))
+
+        # Cancel any previous auto-clear timer
+        if self._status_timer is not None:
+            self.root.after_cancel(self._status_timer)
+
+        self._status_timer = self.root.after(
+            durations.get(level, 3000),
+            lambda: self.status_bar.config(text="Ready", fg="#555555")
+        )
+
     def save_node(self):
         """Saves current fields to the node object."""
         node_id = self.entry_id.get().strip()
@@ -95,7 +130,7 @@ class NodeEditorApp:
 
         self.current_node_id = node_id
         self.refresh_list()
-        messagebox.showinfo("Saved", f"Node '{node_id}' updated.")
+        self.show_status(f"Node '{node_id}' saved.", "success")
 
     def refresh_list(self):
         self.node_listbox.delete(0, tk.END)
@@ -138,7 +173,7 @@ class NodeEditorApp:
     def delete_node(self):
         """Deletes the currently selected node after confirmation."""
         if not self.current_node_id:
-            messagebox.showwarning("Warning", "Please select a node to delete.")
+            self.show_status("Please select a node to delete.", "warning")
             return
 
         # Confirm deletion
@@ -150,7 +185,7 @@ class NodeEditorApp:
         # Remove from tree
         if self.current_node_id in self.tree.nodes:
             del self.tree.nodes[self.current_node_id]
-            messagebox.showinfo("Deleted", f"Node '{self.current_node_id}' deleted.")
+            self.show_status(f"Node '{self.current_node_id}' deleted.", "success")
 
             # Clear fields and refresh
             self.clear_fields()
@@ -158,11 +193,11 @@ class NodeEditorApp:
 
     def export_json(self):
         self.tree.save_to_json()
-        messagebox.showinfo("Export", "Saved to scripts/story_data.json")
+        self.show_status("Exported to scripts/story_data.json", "success")
 
     def open_choice_window(self):
         if not self.current_node_id:
-            messagebox.showwarning("Warning", "Please save or select a Node first.")
+            self.show_status("Please save or select a Node first.", "warning")
             return
 
         node = self.tree.get_node(self.current_node_id)
@@ -254,7 +289,7 @@ class NodeEditorApp:
         """Passes the current tree to the visualizer module."""
         # Check if tree is empty
         if not self.tree.nodes:
-            messagebox.showwarning("Empty", "No nodes to visualize!")
+            self.show_status("No nodes to visualize.", "warning")
             return
 
         try:
@@ -301,11 +336,11 @@ class NodeEditorApp:
             value_str = v_value.get().strip()
 
             if not name:
-                messagebox.showwarning("Warning", "Variable name is required!")
+                self.show_status("Variable name is required.", "warning")
                 return
 
             if not value_str:
-                messagebox.showwarning("Warning", "Initial value is required!")
+                self.show_status("Initial value is required.", "warning")
                 return
 
             try:
@@ -330,13 +365,13 @@ class NodeEditorApp:
             v_name.delete(0, tk.END)
             v_value.delete(0, tk.END)
 
-            messagebox.showinfo("Success", f"Variable '{name}' set to {value}")
+            self.show_status(f"Variable '{name}' set to {value}", "success")
 
         def delete_variable_action():
             """Delete the selected variable."""
             selection = var_list.curselection()
             if not selection:
-                messagebox.showwarning("Warning", "Please select a variable to delete!")
+                self.show_status("Please select a variable to delete.", "warning")
                 return
 
             selected_text = var_list.get(selection[0])
@@ -355,7 +390,7 @@ class NodeEditorApp:
                 del self.tree.state[var_name]
 
             refresh_var_list()
-            messagebox.showinfo("Deleted", f"Variable '{var_name}' deleted.")
+            self.show_status(f"Variable '{var_name}' deleted.", "success")
 
         # Buttons
         btn_frame = tk.Frame(win)
