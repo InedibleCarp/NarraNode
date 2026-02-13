@@ -201,27 +201,79 @@ class NodeEditorApp:
             return
 
         node = self.tree.get_node(self.current_node_id)
-        
+        editing_index = [None]  # Mutable container for closure; None = adding, int = editing
+
         # Create Pop-up Window
         win = Toplevel(self.root)
         win.title(f"Choices for {node.node_id}")
-        win.geometry("500x550") # Made slightly taller to fit new field
+        win.geometry("500x600")
 
         # List existing choices
-        lbl = tk.Label(win, text="Existing Choices:")
-        lbl.pack(anchor="w", padx=10, pady=5)
-        
+        tk.Label(win, text="Existing Choices:").pack(anchor="w", padx=10, pady=5)
+
         choice_list = tk.Listbox(win, height=6)
         choice_list.pack(fill="x", padx=10)
 
-        for c in node.choices:
-            # Display target + text. If it has requirements, show a little lock icon/text.
-            req_text = " [LOCKED]" if c.get('requirements') else ""
-            choice_list.insert(tk.END, f"-> {c['next_id']} : {c['text']}{req_text}")
+        def refresh_choice_list():
+            choice_list.delete(0, tk.END)
+            for c in node.choices:
+                req_text = " [LOCKED]" if c.get('requirements') else ""
+                choice_list.insert(tk.END, f"-> {c['next_id']} : {c['text']}{req_text}")
 
-        # --- ADD NEW CHOICE FORM ---
-        tk.Label(win, text="--- Add New Choice ---").pack(pady=10)
-        
+        refresh_choice_list()
+
+        # --- Edit / Delete buttons for existing choices ---
+        list_btn_frame = tk.Frame(win)
+        list_btn_frame.pack(fill="x", padx=10, pady=(2, 0))
+
+        def edit_choice_action():
+            selection = choice_list.curselection()
+            if not selection:
+                self.show_status("Select a choice to edit.", "warning")
+                return
+            idx = selection[0]
+            choice = node.choices[idx]
+
+            # Populate form fields with existing data
+            c_text.delete(0, tk.END)
+            c_text.insert(0, choice["text"])
+
+            c_next.delete(0, tk.END)
+            c_next.insert(0, choice["next_id"])
+
+            c_effects.delete(0, tk.END)
+            if choice.get("effects"):
+                c_effects.insert(0, json.dumps(choice["effects"]))
+
+            c_reqs.delete(0, tk.END)
+            if choice.get("requirements"):
+                c_reqs.insert(0, json.dumps(choice["requirements"]))
+
+            editing_index[0] = idx
+            form_label.config(text="--- Edit Choice ---")
+            save_btn.config(text="Update Choice")
+
+        def delete_choice_action():
+            selection = choice_list.curselection()
+            if not selection:
+                self.show_status("Select a choice to delete.", "warning")
+                return
+            idx = selection[0]
+            del node.choices[idx]
+            refresh_choice_list()
+            self.show_status("Choice deleted.", "success")
+
+            # If we were editing the deleted choice, cancel the edit
+            if editing_index[0] is not None:
+                cancel_edit()
+
+        tk.Button(list_btn_frame, text="Edit", command=edit_choice_action, bg="#add8e6").pack(side="left", padx=5)
+        tk.Button(list_btn_frame, text="Delete", command=delete_choice_action, bg="#ffb3ba").pack(side="left", padx=5)
+
+        # --- ADD / EDIT CHOICE FORM ---
+        form_label = tk.Label(win, text="--- Add New Choice ---")
+        form_label.pack(pady=10)
+
         tk.Label(win, text="Button Text:").pack()
         c_text = tk.Entry(win)
         c_text.pack()
@@ -230,60 +282,68 @@ class NodeEditorApp:
         c_next = tk.Entry(win)
         c_next.pack()
 
-        # Effects Field
         tk.Label(win, text="Effects (JSON) e.g. {'gold': -5}").pack()
         c_effects = tk.Entry(win)
         c_effects.pack()
 
-        # NEW: Requirements Field
         tk.Label(win, text="Requirements (JSON) e.g. {'gold': 10}").pack()
-        c_reqs = tk.Entry(win) # <--- The new input box
+        c_reqs = tk.Entry(win)
         c_reqs.pack()
 
-        def add_choice_action():
+        def parse_json(s):
+            if not s: return {}
+            try:
+                return json.loads(s.replace("'", '"'))
+            except Exception:
+                messagebox.showerror("Error", f"Invalid JSON: {s}")
+                return None
+
+        def save_choice_action():
             txt = c_text.get()
             nxt = c_next.get()
             eff_str = c_effects.get()
-            req_str = c_reqs.get() # <--- Get the text
-            
+            req_str = c_reqs.get()
+
             if not txt or not nxt:
                 return
 
-            # Helper to safely parse JSON
-            def parse_json(s):
-                if not s: return {}
-                try:
-                    return json.loads(s.replace("'", '"'))
-                except:
-                    messagebox.showerror("Error", f"Invalid JSON: {s}")
-                    return None
-
             real_effects = parse_json(eff_str)
-            real_reqs = parse_json(req_str) # <--- Parse it
-
-            # If JSON failed, stop
+            real_reqs = parse_json(req_str)
             if real_effects is None or real_reqs is None:
                 return
 
-            # Add to Backend
-            node.add_choice(
-                txt, 
-                nxt, 
-                effects=real_effects, 
-                requirements=real_reqs # <--- Pass it to logic
-            )
-            
-            # Refresh list
-            req_display = " [LOCKED]" if real_reqs else ""
-            choice_list.insert(tk.END, f"-> {nxt} : {txt}{req_display}")
-            
-            # Clear inputs
+            if editing_index[0] is not None:
+                # Update existing choice in-place
+                node.choices[editing_index[0]] = {
+                    "text": txt,
+                    "next_id": nxt,
+                    "effects": real_effects,
+                    "requirements": real_reqs
+                }
+                self.show_status("Choice updated.", "success")
+            else:
+                # Add new choice
+                node.add_choice(txt, nxt, effects=real_effects, requirements=real_reqs)
+                self.show_status("Choice added.", "success")
+
+            refresh_choice_list()
+            cancel_edit()
+
+        def cancel_edit():
+            """Reset form back to 'add new' mode."""
+            editing_index[0] = None
+            form_label.config(text="--- Add New Choice ---")
+            save_btn.config(text="Add Choice")
             c_text.delete(0, tk.END)
             c_next.delete(0, tk.END)
             c_effects.delete(0, tk.END)
             c_reqs.delete(0, tk.END)
 
-        tk.Button(win, text="Add Choice", command=add_choice_action, bg="#90ee90").pack(pady=10)
+        btn_row = tk.Frame(win)
+        btn_row.pack(pady=10)
+        save_btn = tk.Button(btn_row, text="Add Choice", command=save_choice_action, bg="#90ee90")
+        save_btn.pack(side="left", padx=5)
+        tk.Button(btn_row, text="Cancel", command=cancel_edit, bg="#f0f0f0").pack(side="left", padx=5)
 
     def show_graph(self):
         """Passes the current tree to the visualizer module."""
