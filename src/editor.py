@@ -60,13 +60,16 @@ class NodeEditorApp:
         self.entry_next_node = tk.Entry(self.right_frame)
         self.entry_next_node.pack(fill="x", pady=(0, 10))
 
-        # Buttons Row
+        # Buttons Row — detect platform for shortcut hints
+        import sys as _sys
+        _mod = "Cmd" if _sys.platform == "darwin" else "Ctrl"
+
         self.btn_frame = tk.Frame(self.right_frame)
         self.btn_frame.pack(fill="x", pady=10)
-        
-        tk.Button(self.btn_frame, text="Save Node", command=self.save_node, bg="#dddddd").pack(side="left", padx=5)
-        tk.Button(self.btn_frame, text="Clear", command=self.clear_fields, bg="#f0f0f0").pack(side="left", padx=5)
-        tk.Button(self.btn_frame, text="Delete", command=self.delete_node, bg="#ffb3ba").pack(side="left", padx=5)
+
+        tk.Button(self.btn_frame, text=f"Save ({_mod}+S)", command=self.save_node, bg="#dddddd").pack(side="left", padx=5)
+        tk.Button(self.btn_frame, text=f"New ({_mod}+N)", command=self.clear_fields, bg="#f0f0f0").pack(side="left", padx=5)
+        tk.Button(self.btn_frame, text="Delete (Del)", command=self.delete_node, bg="#ffb3ba").pack(side="left", padx=5)
         tk.Button(self.btn_frame, text="Manage Choices", command=self.open_choice_window, bg="#add8e6").pack(side="left", padx=5)
 
         # --- NEW BUTTONS ---
@@ -74,6 +77,21 @@ class NodeEditorApp:
         tk.Button(self.btn_frame, text="Global Variables", command=self.open_variables_window, bg="#c5e1a5").pack(side="left", padx=5)
 
         tk.Button(self.btn_frame, text="Export JSON", command=self.export_json).pack(side="right")
+
+        # --- KEYBOARD SHORTCUTS (Control for Win/Linux, Command for Mac) ---
+        self.root.bind("<Control-s>", lambda e: self.save_node())
+        self.root.bind("<Control-n>", lambda e: self.clear_fields())
+        self.root.bind("<Command-s>", lambda e: self.save_node())
+        self.root.bind("<Command-n>", lambda e: self.clear_fields())
+        self.root.bind("<Delete>", self._on_delete_key)
+        self.root.bind("<BackSpace>", self._on_delete_key)
+
+    def _on_delete_key(self, event):
+        """Handle Delete key — only delete a node if focus is NOT in a text input."""
+        focused = self.root.focus_get()
+        if isinstance(focused, (tk.Entry, tk.Text)):
+            return  # Let the widget handle its own Delete key
+        self.delete_node()
 
     def show_status(self, message, level="info"):
         """Display a message in the status bar that auto-clears after a few seconds.
