@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox, simpledialog, Toplevel
+from tkinter import ttk, messagebox, simpledialog, Toplevel
 import json
 import narranode as engine
 import visualizer as visualizer
@@ -14,82 +14,97 @@ class NodeEditorApp:
         self.current_node_id = None # Track what we are editing
         self._status_timer = None  # Track auto-clear timer
 
+        # --- TTK STYLES ---
+        self.style = ttk.Style()
+        self.style.configure("Save.TButton", background="#dddddd")
+        self.style.configure("New.TButton", background="#f0f0f0")
+        self.style.configure("Delete.TButton", background="#ffb3ba")
+        self.style.configure("Choice.TButton", background="#add8e6")
+        self.style.configure("Map.TButton", background="#ffcccb")
+        self.style.configure("Vars.TButton", background="#c5e1a5")
+        self.style.configure("Add.TButton", background="#90ee90")
+        self.style.configure("Edit.TButton", background="#add8e6")
+        self.style.configure("LeftPanel.TFrame", background="#e0e0e0")
+        self.style.configure("LeftPanel.TLabel", background="#e0e0e0")
+
         # --- STATUS BAR (pack first so it anchors to bottom) ---
+        # Keep as tk.Label for dynamic fg color changes
         self.status_bar = tk.Label(root, text="Ready", anchor="w",
                                    bg="#f0f0f0", fg="#555555",
                                    relief="sunken", padx=10, pady=4)
         self.status_bar.pack(side="bottom", fill="x")
 
         # --- LEFT PANEL (List) ---
-        self.left_frame = tk.Frame(root, width=250, bg="#e0e0e0")
+        self.left_frame = ttk.Frame(root, width=250, style="LeftPanel.TFrame")
         self.left_frame.pack(side="left", fill="y")
-        
-        tk.Label(self.left_frame, text="Nodes List", bg="#e0e0e0").pack(pady=5)
-        
+
+        ttk.Label(self.left_frame, text="Nodes List", style="LeftPanel.TLabel").pack(pady=5)
+
         # Add Scrollbar to list
-        self.list_scroll = tk.Scrollbar(self.left_frame)
+        self.list_scroll = ttk.Scrollbar(self.left_frame)
         self.list_scroll.pack(side="right", fill="y")
-        
+
         self.node_listbox = tk.Listbox(self.left_frame, yscrollcommand=self.list_scroll.set)
         self.node_listbox.pack(fill="both", expand=True, padx=5)
         self.list_scroll.config(command=self.node_listbox.yview)
-        
+
         self.node_listbox.bind('<<ListboxSelect>>', self.load_selected_node)
-        
+
         # --- RIGHT PANEL (Editor) ---
-        self.right_frame = tk.Frame(root, padx=20, pady=20)
+        self.right_frame = ttk.Frame(root, padding=(20, 20))
         self.right_frame.pack(side="right", fill="both", expand=True)
 
         # ID Field
-        tk.Label(self.right_frame, text="Node ID (Unique):").pack(anchor="w")
-        self.entry_id = tk.Entry(self.right_frame)
+        ttk.Label(self.right_frame, text="Node ID (Unique):").pack(anchor="w")
+        self.entry_id = ttk.Entry(self.right_frame)
         self.entry_id.pack(fill="x", pady=(0, 10))
 
         # Speaker Field
-        tk.Label(self.right_frame, text="Speaker Name:").pack(anchor="w")
-        self.entry_speaker = tk.Entry(self.right_frame)
+        ttk.Label(self.right_frame, text="Speaker Name:").pack(anchor="w")
+        self.entry_speaker = ttk.Entry(self.right_frame)
         self.entry_speaker.pack(fill="x", pady=(0, 10))
 
-        # Text Field
-        tk.Label(self.right_frame, text="Dialogue Text:").pack(anchor="w")
+        # Text Field (no ttk equivalent — keep as tk.Text)
+        ttk.Label(self.right_frame, text="Dialogue Text:").pack(anchor="w")
         self.text_content = tk.Text(self.right_frame, height=5)
         self.text_content.pack(fill="x", pady=(0, 10))
 
         # Linear Flow Field (Next Node)
-        tk.Label(self.right_frame, text="Next Node (Linear Flow - leave empty for choices):").pack(anchor="w")
-        self.entry_next_node = tk.Entry(self.right_frame)
+        ttk.Label(self.right_frame, text="Next Node (Linear Flow - leave empty for choices):").pack(anchor="w")
+        self.entry_next_node = ttk.Entry(self.right_frame)
         self.entry_next_node.pack(fill="x", pady=(0, 10))
 
         # Buttons Row — detect platform for shortcut hints
         import sys as _sys
         _mod = "Cmd" if _sys.platform == "darwin" else "Ctrl"
 
-        self.btn_frame = tk.Frame(self.right_frame)
+        self.btn_frame = ttk.Frame(self.right_frame)
         self.btn_frame.pack(fill="x", pady=10)
 
-        tk.Button(self.btn_frame, text=f"Save ({_mod}+S)", command=self.save_node, bg="#dddddd").pack(side="left", padx=5)
-        tk.Button(self.btn_frame, text=f"New ({_mod}+N)", command=self.clear_fields, bg="#f0f0f0").pack(side="left", padx=5)
-        tk.Button(self.btn_frame, text="Delete (Del)", command=self.delete_node, bg="#ffb3ba").pack(side="left", padx=5)
-        tk.Button(self.btn_frame, text="Manage Choices", command=self.open_choice_window, bg="#add8e6").pack(side="left", padx=5)
+        ttk.Button(self.btn_frame, text=f"Save ({_mod}+S)", command=self.save_node, style="Save.TButton").pack(side="left", padx=5)
+        ttk.Button(self.btn_frame, text=f"New ({_mod}+N)", command=self.clear_fields, style="New.TButton").pack(side="left", padx=5)
+        ttk.Button(self.btn_frame, text="Delete (Del)", command=self.delete_node, style="Delete.TButton").pack(side="left", padx=5)
+        ttk.Button(self.btn_frame, text="Manage Choices", command=self.open_choice_window, style="Choice.TButton").pack(side="left", padx=5)
 
         # --- NEW BUTTONS ---
-        tk.Button(self.btn_frame, text="Show Map", command=self.show_graph, bg="#ffcccb").pack(side="left", padx=5)
-        tk.Button(self.btn_frame, text="Global Variables", command=self.open_variables_window, bg="#c5e1a5").pack(side="left", padx=5)
+        ttk.Button(self.btn_frame, text="Show Map", command=self.show_graph, style="Map.TButton").pack(side="left", padx=5)
+        ttk.Button(self.btn_frame, text="Global Variables", command=self.open_variables_window, style="Vars.TButton").pack(side="left", padx=5)
 
-        tk.Button(self.btn_frame, text="Export JSON", command=self.export_json).pack(side="right")
+        ttk.Button(self.btn_frame, text="Export JSON", command=self.export_json).pack(side="right")
 
         # --- KEYBOARD SHORTCUTS (Control for Win/Linux, Command for Mac) ---
         self.root.bind("<Control-s>", lambda e: self.save_node())
         self.root.bind("<Control-n>", lambda e: self.clear_fields())
-        self.root.bind("<Command-s>", lambda e: self.save_node())
-        self.root.bind("<Command-n>", lambda e: self.clear_fields())
+        if _sys.platform == "darwin":
+            self.root.bind("<Command-s>", lambda e: self.save_node())
+            self.root.bind("<Command-n>", lambda e: self.clear_fields())
         self.root.bind("<Delete>", self._on_delete_key)
         self.root.bind("<BackSpace>", self._on_delete_key)
 
     def _on_delete_key(self, event):
         """Handle Delete key — only delete a node if focus is NOT in a text input."""
         focused = self.root.focus_get()
-        if isinstance(focused, (tk.Entry, tk.Text)):
+        if isinstance(focused, (tk.Entry, ttk.Entry, tk.Text)):
             return  # Let the widget handle its own Delete key
         self.delete_node()
 
@@ -227,7 +242,7 @@ class NodeEditorApp:
         win.geometry("500x600")
 
         # List existing choices
-        tk.Label(win, text="Existing Choices:").pack(anchor="w", padx=10, pady=5)
+        ttk.Label(win, text="Existing Choices:").pack(anchor="w", padx=10, pady=5)
 
         choice_list = tk.Listbox(win, height=6)
         choice_list.pack(fill="x", padx=10)
@@ -241,7 +256,7 @@ class NodeEditorApp:
         refresh_choice_list()
 
         # --- Edit / Delete buttons for existing choices ---
-        list_btn_frame = tk.Frame(win)
+        list_btn_frame = ttk.Frame(win)
         list_btn_frame.pack(fill="x", padx=10, pady=(2, 0))
 
         def edit_choice_action():
@@ -285,27 +300,27 @@ class NodeEditorApp:
             if editing_index[0] is not None:
                 cancel_edit()
 
-        tk.Button(list_btn_frame, text="Edit", command=edit_choice_action, bg="#add8e6").pack(side="left", padx=5)
-        tk.Button(list_btn_frame, text="Delete", command=delete_choice_action, bg="#ffb3ba").pack(side="left", padx=5)
+        ttk.Button(list_btn_frame, text="Edit", command=edit_choice_action, style="Edit.TButton").pack(side="left", padx=5)
+        ttk.Button(list_btn_frame, text="Delete", command=delete_choice_action, style="Delete.TButton").pack(side="left", padx=5)
 
         # --- ADD / EDIT CHOICE FORM ---
-        form_label = tk.Label(win, text="--- Add New Choice ---")
+        form_label = ttk.Label(win, text="--- Add New Choice ---")
         form_label.pack(pady=10)
 
-        tk.Label(win, text="Button Text:").pack()
-        c_text = tk.Entry(win)
+        ttk.Label(win, text="Button Text:").pack()
+        c_text = ttk.Entry(win)
         c_text.pack()
 
-        tk.Label(win, text="Target Node ID:").pack()
-        c_next = tk.Entry(win)
+        ttk.Label(win, text="Target Node ID:").pack()
+        c_next = ttk.Entry(win)
         c_next.pack()
 
-        tk.Label(win, text="Effects (JSON) e.g. {'gold': -5}").pack()
-        c_effects = tk.Entry(win)
+        ttk.Label(win, text="Effects (JSON) e.g. {'gold': -5}").pack()
+        c_effects = ttk.Entry(win)
         c_effects.pack()
 
-        tk.Label(win, text="Requirements (JSON) e.g. {'gold': 10}").pack()
-        c_reqs = tk.Entry(win)
+        ttk.Label(win, text="Requirements (JSON) e.g. {'gold': 10}").pack()
+        c_reqs = ttk.Entry(win)
         c_reqs.pack()
 
         def parse_json(s):
@@ -357,11 +372,11 @@ class NodeEditorApp:
             c_effects.delete(0, tk.END)
             c_reqs.delete(0, tk.END)
 
-        btn_row = tk.Frame(win)
+        btn_row = ttk.Frame(win)
         btn_row.pack(pady=10)
-        save_btn = tk.Button(btn_row, text="Add Choice", command=save_choice_action, bg="#90ee90")
+        save_btn = ttk.Button(btn_row, text="Add Choice", command=save_choice_action, style="Add.TButton")
         save_btn.pack(side="left", padx=5)
-        tk.Button(btn_row, text="Cancel", command=cancel_edit, bg="#f0f0f0").pack(side="left", padx=5)
+        ttk.Button(btn_row, text="Cancel", command=cancel_edit, style="New.TButton").pack(side="left", padx=5)
 
     def show_graph(self):
         """Passes the current tree to the visualizer module."""
@@ -383,8 +398,7 @@ class NodeEditorApp:
         win.geometry("500x450")
 
         # List existing variables
-        lbl = tk.Label(win, text="Current Global Variables:")
-        lbl.pack(anchor="w", padx=10, pady=5)
+        ttk.Label(win, text="Current Global Variables:").pack(anchor="w", padx=10, pady=5)
 
         var_list = tk.Listbox(win, height=8)
         var_list.pack(fill="x", padx=10)
@@ -398,14 +412,14 @@ class NodeEditorApp:
         refresh_var_list()
 
         # --- ADD/EDIT VARIABLE FORM ---
-        tk.Label(win, text="--- Add/Edit Variable ---").pack(pady=10)
+        ttk.Label(win, text="--- Add/Edit Variable ---").pack(pady=10)
 
-        tk.Label(win, text="Variable Name:").pack()
-        v_name = tk.Entry(win)
+        ttk.Label(win, text="Variable Name:").pack()
+        v_name = ttk.Entry(win)
         v_name.pack()
 
-        tk.Label(win, text="Initial Value (number):").pack()
-        v_value = tk.Entry(win)
+        ttk.Label(win, text="Initial Value (number):").pack()
+        v_value = ttk.Entry(win)
         v_value.pack()
 
         def add_variable_action():
@@ -471,11 +485,11 @@ class NodeEditorApp:
             self.show_status(f"Variable '{var_name}' deleted.", "success")
 
         # Buttons
-        btn_frame = tk.Frame(win)
+        btn_frame = ttk.Frame(win)
         btn_frame.pack(pady=10)
 
-        tk.Button(btn_frame, text="Add/Update Variable", command=add_variable_action, bg="#90ee90").pack(side="left", padx=5)
-        tk.Button(btn_frame, text="Delete Selected", command=delete_variable_action, bg="#ffb3ba").pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Add/Update Variable", command=add_variable_action, style="Add.TButton").pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Delete Selected", command=delete_variable_action, style="Delete.TButton").pack(side="left", padx=5)
 
 
 if __name__ == "__main__":
