@@ -163,7 +163,16 @@ class NodeEditorApp:
 
         self.current_node_id = node_id
         self.refresh_list()
-        self.show_status(f"Node '{node_id}' saved.", "success")
+
+        # Warn if next_node_id is set while the node also has choices (choices take precedence)
+        saved_node = self.tree.get_node(node_id)
+        if next_node and saved_node and saved_node.choices:
+            self.show_status(
+                f"Warning: Node '{node_id}' has choices — 'Next Node' will be ignored during play.",
+                "warning"
+            )
+        else:
+            self.show_status(f"Node '{node_id}' saved.", "success")
 
     def refresh_list(self):
         self.node_listbox.delete(0, tk.END)
@@ -353,11 +362,23 @@ class NodeEditorApp:
                     "effects": real_effects,
                     "requirements": real_reqs
                 }
-                self.show_status("Choice updated.", "success")
+                if node.next_node_id:
+                    self.show_status(
+                        f"Warning: Node '{node.node_id}' has a Next Node set — it will be ignored when choices are present.",
+                        "warning"
+                    )
+                else:
+                    self.show_status("Choice updated.", "success")
             else:
                 # Add new choice
                 node.add_choice(txt, nxt, effects=real_effects, requirements=real_reqs)
-                self.show_status("Choice added.", "success")
+                if node.next_node_id:
+                    self.show_status(
+                        f"Warning: Node '{node.node_id}' has a Next Node set — it will be ignored when choices are present.",
+                        "warning"
+                    )
+                else:
+                    self.show_status("Choice added.", "success")
 
             refresh_choice_list()
             cancel_edit()

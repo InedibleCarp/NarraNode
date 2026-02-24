@@ -143,6 +143,10 @@ def play_story(tree, start_node_id):
         print(f"[{node.speaker}]: \"{node.text}\"")
         print("-" * 50)
 
+        # --- CONFLICT WARNING (node has both next_node_id and choices) ---
+        if node.next_node_id and node.choices:
+            print(f"[Warning] Node '{node.node_id}' has both a Next Node and Choices set. Next Node will be ignored.")
+
         # --- LINEAR FLOW (No choices, auto-advance) ---
         if not node.choices:
             if node.next_node_id:
