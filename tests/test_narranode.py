@@ -463,6 +463,54 @@ class TestPlayStory:
         output = capsys.readouterr().out
         assert "No valid choices" in output or "Game Over" in output
 
+    def test_conflict_warning_when_node_has_both_next_and_choices(self, monkeypatch, capsys):
+        """play_story should print a warning when a node has both next_node_id and choices."""
+        tree = engine.DialogueTree()
+        # Node with BOTH next_node_id and choices — choices take precedence
+        conflict = engine.DialogueNode("conflict", "NPC", "Pick one.", next_node_id="ignored")
+        conflict.add_choice("Go to end", "end")
+        tree.add_node(conflict)
+        tree.add_node(engine.DialogueNode("end", "NPC", "Done."))
+        tree.add_node(engine.DialogueNode("ignored", "NPC", "Should never appear."))
+
+        inputs = iter(["1"])
+        monkeypatch.setattr("builtins.input", lambda _="": next(inputs))
+        engine.play_story(tree, "conflict")
+
+        output = capsys.readouterr().out
+        assert "Warning" in output
+        assert "conflict" in output
+        assert "Next Node" in output or "ignored" in output or "next" in output.lower()
+
+    def test_no_conflict_warning_for_next_node_only(self, monkeypatch, capsys):
+        """No warning should appear when a node has only next_node_id and no choices."""
+        tree = engine.DialogueTree()
+        n1 = engine.DialogueNode("start", "NPC", "Begin.", next_node_id="end")
+        tree.add_node(n1)
+        tree.add_node(engine.DialogueNode("end", "NPC", "Done."))
+
+        inputs = iter([""])
+        monkeypatch.setattr("builtins.input", lambda _="": next(inputs))
+        engine.play_story(tree, "start")
+
+        output = capsys.readouterr().out
+        assert "Warning" not in output
+
+    def test_no_conflict_warning_for_choices_only(self, monkeypatch, capsys):
+        """No warning should appear when a node has only choices and no next_node_id."""
+        tree = engine.DialogueTree()
+        n1 = engine.DialogueNode("start", "NPC", "Choose.")
+        n1.add_choice("End", "end")
+        tree.add_node(n1)
+        tree.add_node(engine.DialogueNode("end", "NPC", "Done."))
+
+        inputs = iter(["1"])
+        monkeypatch.setattr("builtins.input", lambda _="": next(inputs))
+        engine.play_story(tree, "start")
+
+        output = capsys.readouterr().out
+        assert "Warning" not in output
+
 
 # ──────────────────────────────────────────────
 # Visualizer

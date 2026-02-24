@@ -137,3 +137,96 @@ class TestEditorStatusIntegration:
         assert "del_me" in app.status_bar.cget("text")
         assert "deleted" in app.status_bar.cget("text").lower()
         assert app.status_bar.cget("fg") == "#2e7d32"
+
+    def test_save_node_warns_when_next_node_set_and_choices_exist(self, app):
+        """Saving a node with next_node_id while it already has choices should show a warning."""
+        import narranode as engine
+
+        # Create a node with a choice already added
+        node = engine.DialogueNode("dual_node", "NPC", "I have both.")
+        node.add_choice("Option A", "node_a")
+        app.tree.add_node(node)
+        app.current_node_id = "dual_node"
+        app.refresh_list()
+
+        # Fill in the form with a next_node value
+        app.entry_id.insert(0, "dual_node")
+        app.entry_speaker.insert(0, "NPC")
+        app.text_content.insert("1.0", "I have both.")
+        app.entry_next_node.insert(0, "some_next_node")
+
+        app.save_node()
+
+        assert app.status_bar.cget("fg") == "#e65100"  # warning orange
+        status = app.status_bar.cget("text").lower()
+        assert "warning" in status
+        assert "next node" in status or "ignored" in status
+
+    def test_save_node_success_when_next_node_set_and_no_choices(self, app):
+        """Saving a node with only next_node_id (no choices) should show success, not a warning."""
+        app.entry_id.insert(0, "linear_node")
+        app.entry_speaker.insert(0, "Narrator")
+        app.text_content.insert("1.0", "Moving on.")
+        app.entry_next_node.insert(0, "next_node")
+
+        app.save_node()
+
+        assert app.status_bar.cget("fg") == "#2e7d32"  # success green
+        assert "saved" in app.status_bar.cget("text").lower()
+
+    def test_add_choice_warns_when_next_node_already_set(self, app):
+        """Adding a choice to a node that has next_node_id should show a warning."""
+        import narranode as engine
+
+        # Create a node with next_node_id already set
+        node = engine.DialogueNode("next_node_conflict", "NPC", "I have a next node.", next_node_id="some_target")
+        app.tree.add_node(node)
+        app.current_node_id = "next_node_conflict"
+        app.refresh_list()
+
+        # Open choice window
+        app.open_choice_window()
+
+        # Find the Toplevel window
+        win = None
+        for child in app.root.winfo_children():
+            if isinstance(child, tk.Toplevel):
+                win = child
+                break
+        assert win is not None
+
+        # Collect all ttk.Entry widgets in depth-first order (c_text, c_next, c_effects, c_reqs)
+        def collect_entries(widget):
+            result = []
+            for child in widget.winfo_children():
+                if isinstance(child, tk.ttk.Entry):
+                    result.append(child)
+                result.extend(collect_entries(child))
+            return result
+
+        entries = collect_entries(win)
+        assert len(entries) >= 2
+        entries[0].insert(0, "Test Choice")  # c_text
+        entries[1].insert(0, "target_node")  # c_next
+
+        # Find and invoke the "Add Choice" button
+        def find_button(widget, text):
+            for child in widget.winfo_children():
+                if isinstance(child, tk.ttk.Button) and child.cget("text") == text:
+                    return child
+                found = find_button(child, text)
+                if found:
+                    return found
+            return None
+
+        add_btn = find_button(win, "Add Choice")
+        assert add_btn is not None
+        add_btn.invoke()
+
+        # Should show a warning about next_node_id conflict
+        assert app.status_bar.cget("fg") == "#e65100"  # warning orange
+        status = app.status_bar.cget("text").lower()
+        assert "warning" in status
+        assert "next node" in status or "ignored" in status
+
+        win.destroy()
